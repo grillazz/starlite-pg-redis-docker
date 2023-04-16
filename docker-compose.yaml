@@ -16,17 +16,32 @@ services:
     environment:
       POSTGRES_PASSWORD: mysecretpassword
       POSTGRES_DB: example-pg-docker
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d $${POSTGRES_DB} -U postgres"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  mailhog:
+    image: mailhog/mailhog
+    ports:
+      - "1025:1025"
+      - "8025:8025"
 
   app:
     build:
       context: .
-      target: install
       args:
-        INSTALL_ARGS: "--no-root"
-    command: scripts/entry
+        INSTALL_DEPENDENCIES: dev
     depends_on:
-      - db
-      - redis
+      mailhog:
+        condition: service_started
+      redis:
+        condition: service_started
+      db:
+        condition: service_healthy
+
     ports:
       - "8000:8000"
     env_file:
